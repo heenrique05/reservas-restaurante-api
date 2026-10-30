@@ -1,16 +1,23 @@
 {
   "name": "reservas-api",
   "version": "1.0.0",
-  "main": "index.js",
-   "scripts": {
-     "dev": "tsx watch src/server.ts",
-     "build": "tsc",
-     "start": "node dist/server.js"
-   },
-  "keywords": [],
-  "author": "",
+  "description": "API de reservas de restaurante com mesas, lista de espera e sinal por Pix",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "api",
+    "reservas",
+    "restaurante",
+    "express",
+    "typescript"
+  ],
+  "author": "Henrique",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^18.0.8",

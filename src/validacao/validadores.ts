@@ -1,11 +1,12 @@
 import { AppError } from '../erros/AppError';
+import type { Papel } from '../tipos/dominio';
 
 // Expressões regulares da seção 17.
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const TEM_LETRA = /[a-zA-Z]/;
 const TEM_NUMERO = /\d/;
 
-export type DadosCadastro = { nome: string; email: string; senha: string };
+export type DadosCadastro = { nome: string; email: string; senha: string; papel?: Papel };
 export type DadosLogin = { email: string; senha: string };
 
 function texto(valor: unknown): string {
@@ -30,9 +31,13 @@ export function validarCadastro(corpo: unknown): DadosCadastro {
   // O bcrypt só usa os primeiros 72 bytes da senha, por isso o limite.
   if (senha.length < 8 || senha.length > 72) problemas.push('A senha precisa ter entre 8 e 72 caracteres');
   else if (!TEM_LETRA.test(senha) || !TEM_NUMERO.test(senha)) problemas.push('A senha precisa ter letras e números');
+  // Opcional: o dono escolhe se a pessoa nova é "funcionario" (o padrão) ou outro "dono".
+  if (dados.papel !== undefined && dados.papel !== 'dono' && dados.papel !== 'funcionario') {
+    problemas.push('O papel precisa ser "dono" ou "funcionario"');
+  }
 
   if (problemas.length) throw new AppError(problemas.join('. '), 400);
-  return { nome, email, senha };
+  return { nome, email, senha, papel: dados.papel as Papel | undefined };
 }
 
 export function validarLogin(corpo: unknown): DadosLogin {

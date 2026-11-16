@@ -9,11 +9,18 @@ import { validarCadastro } from '../validacao/validadores';
 export class UsuarioController {
   constructor(private readonly service: UsuarioService) {}
 
-  // POST /usuarios
+  // POST /usuarios (sem login só no primeiro cadastro; depois, só o dono)
   store = async (req: Request, res: Response) => {
     const dados = validarCadastro(req.body);
-    const usuario = await this.service.cadastrar(dados);
-    res.status(201).json(ok(usuario, 'Usuário cadastrado'));
+    const quemCadastra = req.usuarioPapel ? { papel: req.usuarioPapel } : undefined;
+    const usuario = await this.service.cadastrar(dados, quemCadastra);
+    const mensagem = usuario.papel === 'dono' ? 'Dono cadastrado' : 'Funcionário cadastrado';
+    res.status(201).json(ok(usuario, mensagem));
+  };
+
+  // GET /usuarios (só o dono): a equipe do restaurante
+  index = async (_req: Request, res: Response) => {
+    res.json(ok(await this.service.listarEquipe()));
   };
 
   // GET /usuarios/eu (precisa de login)

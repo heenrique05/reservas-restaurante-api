@@ -26,6 +26,8 @@ function paraUsuario(linha: LinhaUsuario): Usuario {
 
 // Código de erro do PostgreSQL para "valor repetido em coluna única".
 const VIOLACAO_UNICA = '23505';
+// Um número qualquer que identifica a trava do primeiro cadastro.
+const PRIMEIRO_DONO = 4242;
 
 export class KnexUsuarioRepository implements UsuarioRepository {
   private get tabela() {
@@ -49,7 +51,7 @@ export class KnexUsuarioRepository implements UsuarioRepository {
           nome: dados.nome,
           email: dados.email,
           senha_hash: dados.senhaHash,
-          papel: dados.papel ?? 'dono',
+          papel: dados.papel ?? 'funcionario', // na dúvida, o papel com menos poder
         })
         .returning('*');
       return paraUsuario(linha);
@@ -60,5 +62,25 @@ export class KnexUsuarioRepository implements UsuarioRepository {
       }
       throw erro;
     }
+  }
+
+  // O primeiro cadastro do sistema vira o dono. A trava (advisory lock) faz dois "primeiros"
+  // cadastros simultâneos entrarem um de cada vez: o segundo já vê que existe alguém e não vira dono.
+  async criarPrimeiroDono(dados: Omit<NovoUsuario, 'papel'>) {
+    return Database.conexao().transaction(async (trx) => {
+      await trx.raw('SELECT pg_advisory_xact_lock(?)', [PRIMEIRO_DONO]);
+      const alguem = await trx('usuarios').first('id');
+      if (alguem) return undefined;
+
+      const [linha] = await trx<LinhaUsuario>('usuarios')
+        .insert({ nome: dados.nome, email: dados.email, senha_hash: dados.senhaHash, papel: 'dono' })
+        .returning('*');
+      return paraUsuario(linha);
+    });
+  }
+
+  async listar() {
+    const linhas = await this.tabela.orderBy([{ column: 'papel' }, { column: 'nome' }]);
+    return linhas.map(paraUsuario);
   }
 }

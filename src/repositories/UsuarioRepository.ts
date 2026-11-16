@@ -7,4 +7,7 @@ export interface UsuarioRepository {
   buscarPorEmail(email: string): Promise<Usuario | undefined>;
   buscarPorId(id: number): Promise<Usuario | undefined>;
   criar(dados: NovoUsuario): Promise<Usuario>;
+  // Cria o usuário como dono SÓ se ainda não existir ninguém. Se já existir, devolve undefined.
+  criarPrimeiroDono(dados: Omit<NovoUsuario, 'papel'>): Promise<Usuario | undefined>;
+  listar(): Promise<Usuario[]>;
 }

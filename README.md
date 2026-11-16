@@ -58,7 +58,8 @@ Os testes de integração (API + banco de verdade) só rodam se a variável `DAT
 | Método | Rota | Login? | O que faz |
 | --- | --- | --- | --- |
 | GET | `/` | Não | Confere se a API está no ar |
-| POST | `/usuarios` | Não | Cadastra um usuário (`nome`, `email`, `senha`) |
+| POST | `/usuarios` | Só no 1º | O primeiro cadastro vira o **dono**. Depois, só o dono cadastra a equipe (`nome`, `email`, `senha`, `papel` opcional) |
+| GET | `/usuarios` | Dono | Lista a equipe |
 | POST | `/tokens` | Não | Faz login (`email`, `senha`) e devolve o token |
 | GET | `/usuarios/eu` | Sim | Mostra os dados de quem está logado |
 | GET | `/mesas` | Sim | Lista as mesas |
@@ -148,6 +149,8 @@ O service depende de uma interface de repositório, e não do Knex direto. Por i
 
 ## Segurança
 
+- Só o primeiro cadastro é aberto, e ele vira o dono. Dois "primeiros" cadastros ao mesmo tempo entram um de cada vez (advisory lock), então nunca nascem dois donos
+- Depois disso, só o dono cadastra gente nova; quem ele cadastra entra como funcionário, a não ser que ele peça outro dono
 - A senha nunca é salva como foi digitada, só o hash do bcrypt, e o hash nunca sai nas respostas
 - E-mail repetido é barrado pela API e também pelo banco (coluna única)
 - O login responde a mesma mensagem para e-mail inexistente e senha errada

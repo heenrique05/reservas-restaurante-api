@@ -25,29 +25,77 @@ descrever('Rotas de usuário (integração)', () => {
   });
 
   const henrique = { nome: 'Henrique', email: 'henrique@teste.com', senha: 'senha123' };
+  const ana = { nome: 'Ana Garçonete', email: 'ana@teste.com', senha: 'senha456' };
 
-  it('should sign up, log in and open the profile', async () => {
+  async function loginComo(pessoa: { email: string; senha: string }) {
+    const login = await request(app).post('/tokens').send({ email: pessoa.email, senha: pessoa.senha });
+    return `Bearer ${login.body.dados.token}`;
+  }
+
+  it('should sign up the first owner, log in and open the profile', async () => {
     const cadastro = await request(app).post('/usuarios').send(henrique);
     expect(cadastro.status).toBe(201);
+    expect(cadastro.body.dados.papel).toBe('dono');
 
-    const login = await request(app).post('/tokens').send({ email: henrique.email, senha: henrique.senha });
-    expect(login.status).toBe(200);
-
-    const perfil = await request(app)
-      .get('/usuarios/eu')
-      .set('Authorization', `Bearer ${login.body.dados.token}`);
+    const perfil = await request(app).get('/usuarios/eu').set('Authorization', await loginComo(henrique));
 
     expect(perfil.status).toBe(200);
     expect(perfil.body.dados).toEqual(expect.objectContaining({ email: henrique.email }));
     expect(perfil.body.dados).not.toHaveProperty('senhaHash');
   });
 
-  it('should answer 409 for a repeated email', async () => {
+  it('should not let a stranger sign up after the owner exists', async () => {
     await request(app).post('/usuarios').send(henrique);
 
-    const repetido = await request(app).post('/usuarios').send(henrique);
+    const estranho = await request(app).post('/usuarios').send(ana);
+
+    expect(estranho.status).toBe(401);
+  });
+
+  it('should let the owner add staff, and staff cannot add anyone', async () => {
+    await request(app).post('/usuarios').send(henrique);
+    const comoDono = await loginComo(henrique);
+
+    const cadastroAna = await request(app).post('/usuarios').set('Authorization', comoDono).send(ana);
+    expect(cadastroAna.status).toBe(201);
+    expect(cadastroAna.body.dados.papel).toBe('funcionario');
+
+    const comoAna = await loginComo(ana);
+    const tentativa = await request(app)
+      .post('/usuarios')
+      .set('Authorization', comoAna)
+      .send({ nome: 'Outro', email: 'outro@teste.com', senha: 'senha789' });
+    expect(tentativa.status).toBe(403);
+
+    const equipeVistaPelaAna = await request(app).get('/usuarios').set('Authorization', comoAna);
+    expect(equipeVistaPelaAna.status).toBe(403);
+
+    const equipe = await request(app).get('/usuarios').set('Authorization', comoDono);
+    expect(equipe.body.dados).toHaveLength(2);
+  });
+
+  it('should answer 409 for a repeated email', async () => {
+    await request(app).post('/usuarios').send(henrique);
+    const comoDono = await loginComo(henrique);
+
+    const repetido = await request(app).post('/usuarios').set('Authorization', comoDono).send(henrique);
 
     expect(repetido.status).toBe(409);
+  });
+
+  it('should make only one owner when two first sign-ups arrive together', async () => {
+    const respostas = await Promise.all([
+      request(app).post('/usuarios').send(henrique),
+      request(app).post('/usuarios').send(ana),
+    ]);
+
+    expect(respostas.map((r) => r.status).sort()).toEqual([201, 401]);
+  });
+
+  it('should refuse a broken token instead of ignoring it', async () => {
+    const resposta = await request(app).post('/usuarios').set('Authorization', 'Bearer token-falso').send(henrique);
+
+    expect(resposta.status).toBe(401);
   });
 
   it('should block the profile without a token', async () => {

@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import { gerarToken } from '../auth/token';
 import { AppError, Erros } from '../erros/AppError';
 import type { UsuarioRepository } from '../repositories/UsuarioRepository';
-import type { Usuario, UsuarioPublico } from '../tipos/dominio';
+import type { Papel, Usuario, UsuarioPublico } from '../tipos/dominio';
 import type { DadosCadastro, DadosLogin } from '../validacao/validadores';
 
 const RODADAS_BCRYPT = 10;
@@ -16,12 +16,27 @@ export function semSenha({ senhaHash: _senhaHash, ...publico }: Usuario): Usuari
 export class UsuarioService {
   constructor(private readonly repositorio: UsuarioRepository) {}
 
-  async cadastrar(dados: DadosCadastro): Promise<UsuarioPublico> {
+  // Quem cadastra:
+  // - ninguém logado: só funciona no PRIMEIRO cadastro do sistema, que vira o dono;
+  // - um dono logado: cadastra a equipe (funcionário, ou outro dono se pedir);
+  // - um funcionário logado: não pode.
+  async cadastrar(dados: DadosCadastro, quemCadastra?: { papel: Papel }): Promise<UsuarioPublico> {
+    if (quemCadastra && quemCadastra.papel !== 'dono') throw Erros.semPermissao();
+
+    const senhaHash = await bcrypt.hash(dados.senha, RODADAS_BCRYPT);
+    const base = { nome: dados.nome, email: dados.email, senhaHash };
+
+    if (!quemCadastra) {
+      const dono = await this.repositorio.criarPrimeiroDono(base);
+      // Já existe alguém: a mesma resposta para qualquer e-mail, sem contar quem tem cadastro.
+      if (!dono) throw new AppError('Só o dono pode cadastrar novos usuários. Faça login como dono', 401);
+      return semSenha(dono);
+    }
+
     const existente = await this.repositorio.buscarPorEmail(dados.email);
     if (existente) throw Erros.conflito('Este e-mail já está cadastrado');
 
-    const senhaHash = await bcrypt.hash(dados.senha, RODADAS_BCRYPT);
-    const usuario = await this.repositorio.criar({ nome: dados.nome, email: dados.email, senhaHash });
+    const usuario = await this.repositorio.criar({ ...base, papel: dados.papel ?? 'funcionario' });
     return semSenha(usuario);
   }
 
@@ -40,5 +55,9 @@ export class UsuarioService {
     const usuario = await this.repositorio.buscarPorId(id);
     if (!usuario) throw Erros.naoEncontrado('Usuário');
     return semSenha(usuario);
+  }
+
+  async listarEquipe(): Promise<UsuarioPublico[]> {
+    return (await this.repositorio.listar()).map(semSenha);
   }
 }

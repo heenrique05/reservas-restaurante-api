@@ -17,7 +17,11 @@ export type Usuario = {
   email: string;
   senhaHash: string;
   papel: Papel;
+  criadoEm: Date;
 };
+
+// O que chega para criar um usuário (a senha já vem em hash).
+export type NovoUsuario = Pick<Usuario, 'nome' | 'email' | 'senhaHash'> & Partial<Pick<Usuario, 'papel'>>;
 
 export type Mesa = {
   readonly id: number;

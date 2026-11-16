@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import homeRoutes from './routes/homeRoutes';
+import { tokenRoutes, usuarioRoutes } from './routes/usuarioRoutes';
 import { AppError } from './erros/AppError';
 import { rotaNaoEncontrada, tratarErros } from './middlewares/tratarErros';
 
@@ -22,6 +23,8 @@ app.use(
 app.use(express.json());
 
 app.use('/', homeRoutes);
+app.use('/usuarios', usuarioRoutes);
+app.use('/tokens', tokenRoutes);
 
 // Esses dois ficam sempre por último.
 app.use(rotaNaoEncontrada);

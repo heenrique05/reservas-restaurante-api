@@ -16,6 +16,12 @@ export const tratarErros: ErrorRequestHandler = (erro: unknown, req, res, _next)
     return;
   }
 
+  // JSON mal escrito no corpo da requisição: culpa de quem enviou, não do servidor.
+  if ((erro as { type?: string })?.type === 'entity.parse.failed') {
+    res.status(400).json(falha('O corpo da requisição não é um JSON válido'));
+    return;
+  }
+
   console.error(erro);
   res.status(500).json(falha('Erro interno no servidor'));
 };

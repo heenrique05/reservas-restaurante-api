@@ -1,11 +1,9 @@
-import { regras } from '../config/regras';
+import { DURACAO_MS, FOLGA_MS, PRAZO_SINAL_FILA_MS } from '../config/regras';
 import { Erros } from '../erros/AppError';
 import type { ListaEsperaRepository } from '../repositories/ListaEsperaRepository';
 import type { ReservaRepository } from '../repositories/ReservaRepository';
 import type { EntradaEspera, NovaReserva } from '../tipos/dominio';
 import type { OuvinteMesaLiberada } from './ReservaService';
-
-const DURACAO_MS = regras.duracaoReservaMin * 60 * 1000;
 
 // Também é "ouvinte": o ReservaService avisa quando uma mesa libera,
 // e a lista de espera tenta dar essa mesa para quem chegou primeiro (Observer, seção 28).
@@ -43,7 +41,13 @@ export class ListaEsperaService implements OuvinteMesaLiberada {
     return cancelada;
   }
 
+  // A mesa liberou de "inicio" a "termino". Somando a folga dos dois lados, entra na conta
+  // todo mundo da fila cujo horário encostava nesse período.
+  // Quem ganha a mesa pela fila tem 15 minutos para pagar o sinal.
   mesaLiberada(inicio: Date, termino: Date): Promise<number> {
-    return this.lista.promover(inicio, termino, DURACAO_MS);
+    return this.lista.promover(new Date(inicio.getTime() - FOLGA_MS), new Date(termino.getTime() + FOLGA_MS), {
+      duracaoMs: DURACAO_MS,
+      prazoSinalMs: PRAZO_SINAL_FILA_MS,
+    });
   }
 }

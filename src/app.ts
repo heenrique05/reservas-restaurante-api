@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import homeRoutes from './routes/homeRoutes';
+import { disponibilidadeRoutes } from './routes/disponibilidadeRoutes';
 import { listaEsperaRoutes } from './routes/listaEsperaRoutes';
 import { mesaRoutes } from './routes/mesaRoutes';
 import { reservaRoutes } from './routes/reservaRoutes';
@@ -31,6 +32,7 @@ app.use('/tokens', tokenRoutes);
 app.use('/mesas', mesaRoutes);
 app.use('/reservas', reservaRoutes);
 app.use('/lista-espera', listaEsperaRoutes);
+app.use('/disponibilidade', disponibilidadeRoutes);
 
 // Esses dois ficam sempre por último.
 app.use(rotaNaoEncontrada);

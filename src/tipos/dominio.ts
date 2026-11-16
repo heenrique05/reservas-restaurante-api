@@ -9,7 +9,8 @@ export type StatusReserva =
   | 'confirmada'
   | 'cancelada'
   | 'concluida'
-  | 'nao_compareceu';
+  | 'nao_compareceu'
+  | 'expirada'; // o sinal não foi pago no prazo
 
 export type Usuario = {
   readonly id: number;
@@ -45,12 +46,16 @@ export type Reserva = {
   termino: Date; // quando a mesa fica livre de novo
   status: StatusReserva;
   observacao?: string;
+  expiraEm?: Date; // até quando dá para pagar o sinal
   criadoEm: Date;
 };
 
-// O que o cliente manda pra reservar: quem decide a mesa, o fim,
+// O que o cliente manda pra reservar: quem decide a mesa, o fim, o prazo,
 // o status e o id é a API (e o banco).
-export type NovaReserva = Omit<Reserva, 'id' | 'mesaId' | 'termino' | 'status' | 'criadoEm'>;
+export type NovaReserva = Omit<Reserva, 'id' | 'mesaId' | 'termino' | 'status' | 'expiraEm' | 'criadoEm'>;
+
+// Um horário do dia que ainda tem mesa para o grupo.
+export type HorarioLivre = { horario: string; dataHora: Date; mesasLivres: number };
 
 // A listagem do painel traz o número da mesa junto (JOIN da seção 31).
 export type ReservaComMesa = Reserva & { mesaNumero: number };
@@ -74,7 +79,7 @@ export type UsuarioPublico = Omit<Usuario, 'senhaHash'>;
 export type ReservaResumo = Pick<Reserva, 'id' | 'nomeCliente' | 'pessoas' | 'dataHora' | 'status'>;
 
 // Status que ainda ocupam a mesa (seção 22: Exclude).
-export type StatusAtivo = Exclude<StatusReserva, 'cancelada' | 'concluida' | 'nao_compareceu'>;
+export type StatusAtivo = Exclude<StatusReserva, 'cancelada' | 'concluida' | 'nao_compareceu' | 'expirada'>;
 
 // Texto mostrado pra cada status (seção 22: Record).
 // Se um status novo for criado lá em cima e não estiver aqui, o TypeScript avisa.
@@ -84,4 +89,5 @@ export const textoDoStatus: Record<StatusReserva, string> = {
   cancelada: 'Cancelada',
   concluida: 'Concluída',
   nao_compareceu: 'Cliente não compareceu',
+  expirada: 'Expirada (o sinal não foi pago a tempo)',
 };

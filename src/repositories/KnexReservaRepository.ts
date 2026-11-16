@@ -1,8 +1,8 @@
 import type { Knex } from 'knex';
-import { STATUS_QUE_OCUPAM } from '../config/regras';
+import { FOLGA_MS } from '../config/regras';
 import { Database } from '../database/conexao';
-import type { NovaReserva, Reserva, ReservaComMesa, StatusReserva } from '../tipos/dominio';
-import type { ReservaRepository } from './ReservaRepository';
+import type { Reserva, ReservaComMesa, StatusReserva } from '../tipos/dominio';
+import type { DadosParaReservar, Ocupacao, ReservaRepository } from './ReservaRepository';
 
 type LinhaReserva = {
   id: number;
@@ -15,6 +15,7 @@ type LinhaReserva = {
   termino: Date;
   status: StatusReserva;
   observacao: string | null;
+  expira_em: Date | null;
   criado_em: Date;
 };
 
@@ -30,29 +31,36 @@ function paraReserva(l: LinhaReserva): Reserva {
     termino: l.termino,
     status: l.status,
     observacao: l.observacao ?? undefined,
+    expiraEm: l.expira_em ?? undefined,
     criadoEm: l.criado_em,
   };
 }
 
-// "A mesa m não tem reserva ativa que se cruze com esse horário."
+// Uma reserva segura a mesa quando está confirmada,
+// ou aguardando o sinal DENTRO do prazo. Venceu o prazo, a mesa já está livre,
+// mesmo antes de a varredura marcar a reserva como "expirada".
+function ocupaAMesa(qb: Knex.QueryBuilder) {
+  qb.where('r.status', 'confirmada').orWhere((q) =>
+    q.where('r.status', 'aguardando_sinal').andWhere((p) => p.whereNull('r.expira_em').orWhereRaw('r.expira_em > now()')),
+  );
+}
+
+// "A mesa m não tem reserva que se cruze com esse horário", contando a folga para arrumar a mesa.
 // Dois horários se cruzam quando um começa antes do outro terminar.
 function semConflito(inicio: Date, termino: Date) {
   return function (this: Knex.QueryBuilder) {
     this.select(1)
       .from('reservas as r')
       .whereRaw('r.mesa_id = m.id')
-      .whereIn('r.status', STATUS_QUE_OCUPAM)
-      .andWhere('r.inicio', '<', termino)
-      .andWhere('r.termino', '>', inicio);
+      .where(ocupaAMesa)
+      .andWhere('r.inicio', '<', new Date(termino.getTime() + FOLGA_MS))
+      .andWhere('r.termino', '>', new Date(inicio.getTime() - FOLGA_MS));
   };
 }
 
 // Escolhe a menor mesa livre e cria a reserva, DENTRO de uma transaction que já existe.
 // Fica separado para a lista de espera usar a mesma regra, sem copiar código (DRY).
-export async function reservarNaTransacao(
-  trx: Knex.Transaction,
-  dados: NovaReserva & { termino: Date },
-): Promise<Reserva | undefined> {
+export async function reservarNaTransacao(trx: Knex.Transaction, dados: DadosParaReservar): Promise<Reserva | undefined> {
   // 1. Trava as mesas que servem para o grupo (FOR UPDATE).
   //    Se duas pessoas reservarem no mesmo segundo, a segunda espera a primeira terminar,
   //    e aí já enxerga a reserva dela. Sem isso, as duas poderiam pegar a mesma mesa.
@@ -87,6 +95,7 @@ export async function reservarNaTransacao(
       inicio: dados.dataHora,
       termino: dados.termino,
       observacao: dados.observacao ?? null,
+      expira_em: dados.expiraEm,
     })
     .returning('*');
   return paraReserva(linha);
@@ -98,7 +107,7 @@ export class KnexReservaRepository implements ReservaRepository {
   }
 
   // Transaction (seção 32): ou tudo acontece, ou nada.
-  async criarEmMesaLivre(dados: NovaReserva & { termino: Date }) {
+  async criarEmMesaLivre(dados: DadosParaReservar) {
     return this.db.transaction((trx) => reservarNaTransacao(trx, dados));
   }
 
@@ -110,6 +119,24 @@ export class KnexReservaRepository implements ReservaRepository {
       .whereNotExists(semConflito(inicio, termino))
       .first();
     return Boolean(livre);
+  }
+
+  async ocupacao(pessoas: number, de: Date, ate: Date): Promise<Ocupacao> {
+    const mesas = await this.db('mesas').select('id').where('ativa', true).andWhere('lugares', '>=', pessoas);
+    const ids = mesas.map((m) => m.id as number);
+    if (ids.length === 0) return { mesas: [], reservas: [] };
+
+    const reservas = await this.db('reservas as r')
+      .select('r.mesa_id', 'r.inicio', 'r.termino')
+      .whereIn('r.mesa_id', ids)
+      .where(ocupaAMesa)
+      .andWhere('r.inicio', '<', ate)
+      .andWhere('r.termino', '>', de);
+
+    return {
+      mesas: ids,
+      reservas: reservas.map((r) => ({ mesaId: r.mesa_id, inicio: r.inicio, termino: r.termino })),
+    };
   }
 
   // JOIN (seção 31): junta cada reserva com a mesa dela para trazer o número.
@@ -135,5 +162,15 @@ export class KnexReservaRepository implements ReservaRepository {
       .update({ status: para })
       .returning('*');
     return linha ? paraReserva(linha) : undefined;
+  }
+
+  // Um UPDATE só: cada reserva vencida é marcada uma única vez, mesmo com duas varreduras juntas.
+  async expirarVencidas() {
+    const linhas = await this.db<LinhaReserva>('reservas')
+      .where('status', 'aguardando_sinal')
+      .andWhereRaw('expira_em <= now()')
+      .update({ status: 'expirada' })
+      .returning('*');
+    return linhas.map(paraReserva);
   }
 }

@@ -11,5 +11,5 @@ export interface ListaEsperaRepository {
   cancelar(id: number): Promise<EntradaEspera | undefined>;
   // Uma mesa liberou de "inicio" a "termino": tenta dar mesa para quem espera, em ordem de chegada.
   // Devolve quantas pessoas da fila ganharam mesa.
-  promover(inicio: Date, termino: Date, duracaoMs: number): Promise<number>;
+  promover(inicio: Date, termino: Date, opcoes: { duracaoMs: number; prazoSinalMs: number }): Promise<number>;
 }

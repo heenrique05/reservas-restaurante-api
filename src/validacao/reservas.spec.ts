@@ -66,3 +66,17 @@ describe('validação de mesas', () => {
     expect(() => validarEdicaoMesa({})).toThrow('Envie numero, lugares ou ativa');
   });
 });
+
+describe('horário de funcionamento na reserva', () => {
+  it.each([
+    ['before opening', '2026-11-20T10:00:00-03:00'],
+    ['too late to fit 2h30 before closing', '2026-11-20T23:00:00-03:00'],
+    ['not on the 30-minute grid', '2026-11-20T20:15:00-03:00'],
+  ])('should reject a time %s', (_caso, dataHora) => {
+    expect(() => validarNovaReserva({ ...valido, dataHora }, agora)).toThrow('entre 11:00 e 22:30');
+  });
+
+  it('should accept the last time of the day', () => {
+    expect(() => validarNovaReserva({ ...valido, dataHora: '2026-11-20T22:30:00-03:00' }, agora)).not.toThrow();
+  });
+});

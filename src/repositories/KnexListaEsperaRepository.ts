@@ -87,7 +87,7 @@ export class KnexListaEsperaRepository implements ListaEsperaRepository {
 
   // Tudo numa transaction: travar a fila, dar as mesas e marcar quem foi atendido.
   // Se dois cancelamentos chegarem juntos, o segundo espera, e ninguém é atendido duas vezes.
-  async promover(inicio: Date, termino: Date, duracaoMs: number) {
+  async promover(inicio: Date, termino: Date, { duracaoMs, prazoSinalMs }: { duracaoMs: number; prazoSinalMs: number }) {
     return this.db.transaction(async (trx) => {
       // Quem quer um horário que se cruza com o que liberou, do mais antigo para o mais novo.
       const fila = await trx<LinhaEspera>('lista_espera')
@@ -104,6 +104,7 @@ export class KnexListaEsperaRepository implements ListaEsperaRepository {
         const reserva = await reservarNaTransacao(trx, {
           ...entrada,
           termino: new Date(entrada.dataHora.getTime() + duracaoMs),
+          expiraEm: new Date(Date.now() + prazoSinalMs),
         });
         if (reserva) {
           await trx('lista_espera').where({ id: entrada.id }).update({ status: 'atendida', reserva_id: reserva.id });

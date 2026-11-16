@@ -1,4 +1,5 @@
 import { AppError } from '../erros/AppError';
+import { horarioPermitido, PRIMEIRO_HORARIO, ULTIMO_HORARIO } from '../config/horarios';
 import { regras } from '../config/regras';
 import type { NovaReserva, StatusReserva } from '../tipos/dominio';
 import { textoDoStatus } from '../tipos/dominio';
@@ -37,6 +38,10 @@ export function validarNovaReserva(corpo: unknown, agora = new Date()): NovaRese
     problemas.push('A reserva precisa ser para um horário futuro');
   } else if (dataHora.getTime() - agora.getTime() > regras.antecedenciaMaxDias * UM_DIA_MS) {
     problemas.push(`Só é possível reservar com até ${regras.antecedenciaMaxDias} dias de antecedência`);
+  } else if (!horarioPermitido(dataHora)) {
+    problemas.push(
+      `Escolha um horário entre ${PRIMEIRO_HORARIO} e ${ULTIMO_HORARIO}, de ${regras.intervaloHorariosMin} em ${regras.intervaloHorariosMin} minutos`,
+    );
   }
   falharSeHouver(problemas);
 
@@ -72,4 +77,11 @@ export function validarDia(valor: unknown, agora = new Date()): { inicio: Date; 
     throw new AppError('Data inválida: use o formato 2026-11-20', 400);
   }
   return { inicio, fim: new Date(inicio.getTime() + UM_DIA_MS), dia };
+}
+
+// ?pessoas=3 chega como texto.
+export function validarPessoas(valor: unknown): number {
+  const pessoas = inteiro(valor, 1, regras.maxPessoas);
+  if (pessoas === undefined) throw new AppError(`Informe quantas pessoas, de 1 a ${regras.maxPessoas}`, 400);
+  return pessoas;
 }

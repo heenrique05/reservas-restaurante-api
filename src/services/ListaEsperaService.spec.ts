@@ -81,13 +81,17 @@ describe('ListaEsperaService', () => {
     await expect(sut.cancelar(99)).rejects.toMatchObject({ status: 404 });
   });
 
-  it('should try to seat the line when a table is freed, using the 2-hour slot', async () => {
+  it('should try to seat the line with the 15-minute margin and a 15-minute deadline', async () => {
     const { sut, lista } = criarSut();
-    const inicio = new Date('2026-11-20T23:00:00Z');
-    const termino = new Date('2026-11-21T01:00:00Z');
+    const inicio = new Date('2026-11-20T23:00:00Z'); // 20h em Brasília
+    const termino = new Date('2026-11-21T01:30:00Z'); // 22h30
 
     await sut.mesaLiberada(inicio, termino);
 
-    expect(lista.promover).toHaveBeenCalledWith(inicio, termino, 2 * 60 * 60 * 1000);
+    expect(lista.promover).toHaveBeenCalledWith(
+      new Date('2026-11-20T22:45:00Z'), // 15 minutos antes
+      new Date('2026-11-21T01:45:00Z'), // 15 minutos depois
+      { duracaoMs: 150 * 60 * 1000, prazoSinalMs: 15 * 60 * 1000 },
+    );
   });
 });

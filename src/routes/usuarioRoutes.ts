@@ -1,14 +1,11 @@
 import { Router } from 'express';
+import { usuarioService } from '../container';
 import { TokenController } from '../controllers/TokenController';
 import { UsuarioController } from '../controllers/UsuarioController';
 import { loginRequired } from '../middlewares/loginRequired';
-import { KnexUsuarioRepository } from '../repositories/KnexUsuarioRepository';
-import { UsuarioService } from '../services/UsuarioService';
 
-// Aqui as peças são montadas e encaixadas (a luminária recebendo a lâmpada).
-const service = new UsuarioService(new KnexUsuarioRepository());
-const usuarios = new UsuarioController(service);
-const tokens = new TokenController(service);
+const usuarios = new UsuarioController(usuarioService);
+const tokens = new TokenController(usuarioService);
 
 export const usuarioRoutes = Router();
 usuarioRoutes.post('/', usuarios.store);

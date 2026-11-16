@@ -1,11 +1,10 @@
 import { Router } from 'express';
+import { mesaService } from '../container';
 import { MesaController } from '../controllers/MesaController';
 import { loginRequired } from '../middlewares/loginRequired';
 import { somenteDono } from '../middlewares/somenteDono';
-import { KnexMesaRepository } from '../repositories/KnexMesaRepository';
-import { MesaService } from '../services/MesaService';
 
-const mesas = new MesaController(new MesaService(new KnexMesaRepository()));
+const mesas = new MesaController(mesaService);
 
 // Os middlewares rodam em fila, um depois do outro (Chain of Responsibility, seção 28).
 export const mesaRoutes = Router();

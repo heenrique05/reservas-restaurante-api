@@ -1,10 +1,9 @@
 import { Router } from 'express';
+import { reservaService } from '../container';
 import { ReservaController } from '../controllers/ReservaController';
 import { loginRequired } from '../middlewares/loginRequired';
-import { KnexReservaRepository } from '../repositories/KnexReservaRepository';
-import { ReservaService } from '../services/ReservaService';
 
-const reservas = new ReservaController(new ReservaService(new KnexReservaRepository()));
+const reservas = new ReservaController(reservaService);
 
 export const reservaRoutes = Router();
 reservaRoutes.post('/', reservas.store); // o cliente reserva sem login

@@ -55,6 +55,18 @@ export type NovaReserva = Omit<Reserva, 'id' | 'mesaId' | 'termino' | 'status' |
 // A listagem do painel traz o número da mesa junto (JOIN da seção 31).
 export type ReservaComMesa = Reserva & { mesaNumero: number };
 
+// Lista de espera: quem queria um horário lotado.
+// "atendida" = ganhou uma mesa quando alguém cancelou.
+export type StatusEspera = 'aguardando' | 'atendida' | 'cancelada';
+
+// Os mesmos dados de quem reserva, mais o andamento na fila.
+export type EntradaEspera = NovaReserva & {
+  readonly id: number;
+  status: StatusEspera;
+  reservaId?: number; // a reserva criada quando a pessoa foi atendida
+  criadoEm: Date;
+};
+
 // O que pode ir pro front sobre um usuário: nunca a senha.
 export type UsuarioPublico = Omit<Usuario, 'senhaHash'>;
 

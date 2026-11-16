@@ -15,6 +15,10 @@ class ReservaRepositoryMock implements ReservaRepository {
     return reserva;
   }
 
+  async haMesaLivre() {
+    return this.temMesaLivre;
+  }
+
   async listarPorPeriodo() {
     return this.reservas.map((r) => ({ ...r, mesaNumero: 1 }));
   }
@@ -72,7 +76,7 @@ describe('ReservaService', () => {
       const reserva = await sut.reservar(pedido);
       repositorio.reservas[0].status = de;
 
-      const atualizada = await sut.mudarStatus(reserva.id, para);
+      const { reserva: atualizada } = await sut.mudarStatus(reserva.id, para);
 
       expect(atualizada.status).toBe(para);
     });
@@ -94,6 +98,39 @@ describe('ReservaService', () => {
       const { sut } = criarSut();
 
       await expect(sut.mudarStatus(99, 'confirmada')).rejects.toMatchObject({ status: 404 });
+    });
+
+    it('should tell the listeners when a reservation is cancelled', async () => {
+      const ouvinte = { mesaLiberada: jest.fn().mockResolvedValue(1) };
+      const sut = new ReservaService(new ReservaRepositoryMock(), [ouvinte]);
+      const reserva = await sut.reservar(pedido);
+
+      const { atendidosDaFila } = await sut.mudarStatus(reserva.id, 'cancelada');
+
+      expect(ouvinte.mesaLiberada).toHaveBeenCalledWith(reserva.dataHora, reserva.termino);
+      expect(atendidosDaFila).toBe(1);
+    });
+
+    it('should not tell the listeners when a reservation is confirmed', async () => {
+      const ouvinte = { mesaLiberada: jest.fn().mockResolvedValue(0) };
+      const sut = new ReservaService(new ReservaRepositoryMock(), [ouvinte]);
+      const reserva = await sut.reservar(pedido);
+
+      await sut.mudarStatus(reserva.id, 'confirmada');
+
+      expect(ouvinte.mesaLiberada).not.toHaveBeenCalled();
+    });
+
+    it('should keep the cancellation even if a listener fails', async () => {
+      const ouvinte = { mesaLiberada: jest.fn().mockRejectedValue(new Error('banco caiu')) };
+      const sut = new ReservaService(new ReservaRepositoryMock(), [ouvinte]);
+      const reserva = await sut.reservar(pedido);
+      jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      const resultado = await sut.mudarStatus(reserva.id, 'cancelada');
+
+      expect(resultado.reserva.status).toBe('cancelada');
+      expect(resultado.atendidosDaFila).toBe(0);
     });
 
     it('should not save when someone changed the status first', async () => {

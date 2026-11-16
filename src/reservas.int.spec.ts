@@ -27,7 +27,7 @@ descrever('Mesas e reservas (integração)', () => {
   });
 
   beforeEach(async () => {
-    await Database.conexao().raw('TRUNCATE reservas, mesas RESTART IDENTITY');
+    await Database.conexao().raw('TRUNCATE lista_espera, reservas, mesas RESTART IDENTITY');
   });
 
   afterAll(async () => {
@@ -103,6 +103,71 @@ descrever('Mesas e reservas (integração)', () => {
     const resposta = await request(app).post('/reservas').send(pedido(2));
 
     expect(resposta.status).toBe(409);
+  });
+
+  describe('lista de espera', () => {
+    const cancelar = (id: number) =>
+      request(app).patch(`/reservas/${id}/status`).set('Authorization', funcionario).send({ status: 'cancelada' });
+
+    it('should give the freed table to the first in line', async () => {
+      await criarMesa(1, 4);
+      const ana = await request(app).post('/reservas').send({ ...pedido(2), nomeCliente: 'Ana' });
+
+      const lotado = await request(app).post('/reservas').send({ ...pedido(2), nomeCliente: 'Bia', telefone: '11911111111' });
+      const bia = await request(app).post('/lista-espera').send({ ...pedido(2), nomeCliente: 'Bia', telefone: '11911111111' });
+      const caio = await request(app).post('/lista-espera').send({ ...pedido(2), nomeCliente: 'Caio', telefone: '11922222222' });
+
+      expect(lotado.status).toBe(409);
+      expect(lotado.body.mensagem).toContain('lista de espera');
+      expect(bia.body.dados.posicao).toBe(1);
+      expect(caio.body.dados.posicao).toBe(2);
+
+      const cancelamento = await cancelar(ana.body.dados.id);
+      expect(cancelamento.body.mensagem).toContain('1 cliente(s) da lista de espera');
+
+      const fila = await request(app).get('/lista-espera?data=2026-11-20').set('Authorization', funcionario);
+      const [entradaBia, entradaCaio] = fila.body.dados;
+      expect(entradaBia).toEqual(expect.objectContaining({ nomeCliente: 'Bia', status: 'atendida' }));
+      expect(entradaBia.reservaId).toBeDefined();
+      expect(entradaCaio).toEqual(expect.objectContaining({ nomeCliente: 'Caio', status: 'aguardando' }));
+
+      const reservas = await request(app).get('/reservas?data=2026-11-20').set('Authorization', funcionario);
+      const daBia = reservas.body.dados.find((r: { id: number }) => r.id === entradaBia.reservaId);
+      expect(daBia).toEqual(expect.objectContaining({ nomeCliente: 'Bia', status: 'aguardando_sinal' }));
+    });
+
+    it('should seat someone waiting for an overlapping time', async () => {
+      await criarMesa(1, 4);
+      const ana = await request(app).post('/reservas').send(pedido(2)); // 20h às 22h
+      await request(app).post('/lista-espera').send({ ...pedido(2, '2026-11-20T21:00:00-03:00'), telefone: '11911111111' });
+
+      const cancelamento = await cancelar(ana.body.dados.id);
+
+      expect(cancelamento.body.mensagem).toContain('1 cliente(s)');
+    });
+
+    it('should not let anyone wait when a table is free', async () => {
+      await criarMesa(1, 4);
+
+      const resposta = await request(app).post('/lista-espera').send(pedido(2));
+
+      expect(resposta.status).toBe(409);
+    });
+
+    it('should not seat the same person twice when two tables free at once', async () => {
+      await criarMesa(1, 4);
+      await criarMesa(2, 4);
+      const ana = await request(app).post('/reservas').send({ ...pedido(2), telefone: '11911111111' });
+      const bia = await request(app).post('/reservas').send({ ...pedido(2), telefone: '11922222222' });
+      await request(app).post('/lista-espera').send({ ...pedido(2), nomeCliente: 'Caio', telefone: '11933333333' });
+
+      // Os dois cancelamentos chegam juntos. A fila é travada, e o Caio ganha UMA mesa.
+      await Promise.all([cancelar(ana.body.dados.id), cancelar(bia.body.dados.id)]);
+
+      const reservas = await request(app).get('/reservas?data=2026-11-20').set('Authorization', funcionario);
+      const doCaio = reservas.body.dados.filter((r: { nomeCliente: string }) => r.nomeCliente === 'Caio');
+      expect(doCaio).toHaveLength(1);
+    });
   });
 
   it('should list the day with the table number (JOIN)', async () => {

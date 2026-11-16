@@ -67,6 +67,9 @@ Os testes de integração (API + banco de verdade) só rodam se a variável `DAT
 | POST | `/reservas` | Não | O cliente reserva (`nomeCliente`, `telefone`, `pessoas`, `dataHora`, `email` e `observacao` opcionais) |
 | GET | `/reservas?data=2026-11-20` | Sim | Reservas do dia, com o número da mesa |
 | PATCH | `/reservas/:id/status` | Sim | Muda o status (`confirmada`, `cancelada`, `concluida`, `nao_compareceu`) |
+| POST | `/lista-espera` | Não | Entra na fila de um horário lotado (mesmos dados da reserva) |
+| GET | `/lista-espera?data=2026-11-20` | Sim | A fila do dia, em ordem de chegada |
+| PATCH | `/lista-espera/:id/cancelar` | Sim | Tira alguém da fila |
 
 Nas rotas com login, mande o token no cabeçalho:
 
@@ -99,7 +102,14 @@ Quando dá erro, `sucesso` vem `false` e a `mensagem` explica o motivo, sempre c
 
 **Duas pessoas pedindo a última mesa no mesmo segundo:** a reserva roda numa transaction que trava as mesas (`FOR UPDATE`). A segunda espera a primeira terminar e já enxerga a reserva dela. Há um teste que faz exatamente isso; sem a trava, ele falha em cerca de 1 a cada 4 execuções.
 
-As regras ficam juntas em `src/config/regras.ts`.
+### Lista de espera
+
+- Com o horário lotado, o cliente entra na fila e recebe a posição dele. Se ainda houver mesa livre, a API manda reservar direto
+- Quando uma reserva é **cancelada**, a mesa vai sozinha para o primeiro da fila que quer um horário que se cruza com o liberado. A reserva dele nasce "aguardando sinal": pagar o sinal confirma que ainda quer
+- O `ReservaService` não conhece a lista de espera: ele só avisa "uma mesa liberou" a quem estiver ouvindo (padrão Observer). Se esse aviso falhar, o cancelamento continua valendo
+- A fila também é travada numa transaction: se duas mesas liberarem ao mesmo tempo, ninguém ganha duas mesas. Há um teste para isso; sem a trava, ele falha em todas as execuções
+
+As regras ficam juntas em `src/config/regras.ts`, e as peças são montadas em `src/container.ts`.
 
 ## Como o código é organizado
 
@@ -142,7 +152,7 @@ O service depende de uma interface de repositório, e não do Knex direto. Por i
 - [x] Login com JWT e rotas protegidas
 - [x] Testes com Jest
 - [x] Mesas e reservas, sem conflito de horário
-- [ ] Lista de espera
+- [x] Lista de espera, com a mesa passando sozinha para o primeiro da fila
 - [ ] Painel e relatório
 - [ ] Sinal por Pix com webhook
 - [ ] Front-end em React e publicação

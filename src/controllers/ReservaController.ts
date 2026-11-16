@@ -21,7 +21,8 @@ export class ReservaController {
 
   // PATCH /reservas/:id/status (painel)
   alterarStatus = async (req: Request, res: Response) => {
-    const reserva = await this.service.mudarStatus(validarId(req.params.id), validarStatus(req.body));
-    res.json(ok(reserva, 'Status atualizado'));
+    const { reserva, atendidosDaFila } = await this.service.mudarStatus(validarId(req.params.id), validarStatus(req.body));
+    const aviso = atendidosDaFila > 0 ? `. ${atendidosDaFila} cliente(s) da lista de espera ganharam mesa` : '';
+    res.json(ok(reserva, `Status atualizado${aviso}`));
   };
 }

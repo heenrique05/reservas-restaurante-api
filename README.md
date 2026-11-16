@@ -61,6 +61,12 @@ Os testes de integração (API + banco de verdade) só rodam se a variável `DAT
 | POST | `/usuarios` | Não | Cadastra um usuário (`nome`, `email`, `senha`) |
 | POST | `/tokens` | Não | Faz login (`email`, `senha`) e devolve o token |
 | GET | `/usuarios/eu` | Sim | Mostra os dados de quem está logado |
+| GET | `/mesas` | Sim | Lista as mesas |
+| POST | `/mesas` | Dono | Cadastra uma mesa (`numero`, `lugares`) |
+| PATCH | `/mesas/:id` | Dono | Altera ou desativa uma mesa (`numero`, `lugares`, `ativa`) |
+| POST | `/reservas` | Não | O cliente reserva (`nomeCliente`, `telefone`, `pessoas`, `dataHora`, `email` e `observacao` opcionais) |
+| GET | `/reservas?data=2026-11-20` | Sim | Reservas do dia, com o número da mesa |
+| PATCH | `/reservas/:id/status` | Sim | Muda o status (`confirmada`, `cancelada`, `concluida`, `nao_compareceu`) |
 
 Nas rotas com login, mande o token no cabeçalho:
 
@@ -82,6 +88,19 @@ Toda resposta segue o mesmo formato:
 
 Quando dá erro, `sucesso` vem `false` e a `mensagem` explica o motivo, sempre com o status HTTP certo (400, 401, 404, 409...).
 
+## Regras das reservas
+
+- O cliente escolhe o horário e o número de pessoas; a API escolhe a **menor mesa livre** que caiba o grupo
+- Cada reserva ocupa a mesa por 2 horas. Dois horários se cruzam quando um começa antes do outro terminar
+- Reserva cancelada, concluída ou com falta libera a mesa
+- A data precisa vir com o fuso (`2026-11-20T20:00:00-03:00`), ser no futuro e no máximo 60 dias à frente
+- O status só anda para a frente: aguardando sinal → confirmada → concluída (ou falta); cancelar vale até a confirmação
+- Mesa não é apagada, é desativada, para não perder o histórico
+
+**Duas pessoas pedindo a última mesa no mesmo segundo:** a reserva roda numa transaction que trava as mesas (`FOR UPDATE`). A segunda espera a primeira terminar e já enxerga a reserva dela. Há um teste que faz exatamente isso; sem a trava, ele falha em cerca de 1 a cada 4 execuções.
+
+As regras ficam juntas em `src/config/regras.ts`.
+
 ## Como o código é organizado
 
 Cada camada tem uma responsabilidade só:
@@ -97,8 +116,9 @@ src/
 ├── controllers/        # Traduzem HTTP: leem o pedido e respondem
 ├── services/           # Regras do negócio (cadastro, login)
 ├── repositories/       # Conversa com o banco (interface + versão com Knex)
+├── config/             # Variáveis do .env e regras do restaurante
 ├── database/           # Conexão (Singleton) e migrations
-├── middlewares/        # Login obrigatório e tratamento de erros
+├── middlewares/        # Login obrigatório, permissão do dono e tratamento de erros
 ├── validacao/          # Validação dos dados com regex
 ├── auth/               # Gera e confere o JWT
 ├── erros/              # Classe AppError
@@ -121,7 +141,8 @@ O service depende de uma interface de repositório, e não do Knex direto. Por i
 - [x] Banco PostgreSQL com Knex e cadastro de usuário
 - [x] Login com JWT e rotas protegidas
 - [x] Testes com Jest
-- [ ] Mesas e reservas
+- [x] Mesas e reservas, sem conflito de horário
+- [ ] Lista de espera
 - [ ] Painel e relatório
 - [ ] Sinal por Pix com webhook
 - [ ] Front-end em React e publicação

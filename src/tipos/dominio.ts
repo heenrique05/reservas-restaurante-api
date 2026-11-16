@@ -30,6 +30,10 @@ export type Mesa = {
   ativa: boolean;
 };
 
+// Cadastro de mesa: tudo menos o id. Edição: qualquer parte disso.
+export type NovaMesa = Omit<Mesa, 'id'>;
+export type EditarMesa = Partial<NovaMesa>;
+
 export type Reserva = {
   readonly id: number;
   mesaId: number;
@@ -37,17 +41,19 @@ export type Reserva = {
   telefone: string;
   email?: string;
   pessoas: number;
-  dataHora: Date;
+  dataHora: Date; // quando começa
+  termino: Date; // quando a mesa fica livre de novo
   status: StatusReserva;
   observacao?: string;
+  criadoEm: Date;
 };
 
-// O que o cliente manda pra criar uma reserva: sem id (vem do banco)
-// e sem status (a API decide que começa aguardando o sinal).
-export type NovaReserva = Omit<Reserva, 'id' | 'status'>;
+// O que o cliente manda pra reservar: quem decide a mesa, o fim,
+// o status e o id é a API (e o banco).
+export type NovaReserva = Omit<Reserva, 'id' | 'mesaId' | 'termino' | 'status' | 'criadoEm'>;
 
-// Edição parcial (rota PATCH): a pessoa muda só o que precisar.
-export type EditarReserva = Partial<NovaReserva>;
+// A listagem do painel traz o número da mesa junto (JOIN da seção 31).
+export type ReservaComMesa = Reserva & { mesaNumero: number };
 
 // O que pode ir pro front sobre um usuário: nunca a senha.
 export type UsuarioPublico = Omit<Usuario, 'senhaHash'>;

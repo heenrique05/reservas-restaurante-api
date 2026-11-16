@@ -1,7 +1,6 @@
-import knex from 'knex';
 import request from 'supertest';
 import app from './app';
-import { configuracao, Database } from './database/conexao';
+import { Database } from './database/conexao';
 
 // Teste de integração (seção 26): API + banco de verdade, juntos.
 // Só roda se existir DATABASE_URL_TESTE, apontando para um banco SÓ de testes,
@@ -10,17 +9,11 @@ const urlTeste = process.env.DATABASE_URL_TESTE;
 const descrever = urlTeste ? describe : describe.skip;
 
 descrever('Rotas de usuário (integração)', () => {
-  beforeAll(async () => {
+  beforeAll(() => {
     // A conexão só abre na primeira consulta, então dá tempo de trocar o endereço aqui.
+    // As tabelas já foram criadas pelo src/testes/globalSetup.ts.
     process.env.DATABASE_URL = urlTeste;
     process.env.DATABASE_URL_POOLED = urlTeste;
-
-    const db = knex(configuracao(false));
-    try {
-      await db.migrate.latest();
-    } finally {
-      await db.destroy();
-    }
   });
 
   beforeEach(async () => {

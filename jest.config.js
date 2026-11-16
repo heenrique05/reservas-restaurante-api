@@ -5,5 +5,6 @@ module.exports = {
   transform: { '^.+\\.ts$': '@swc/jest' },
   roots: ['<rootDir>/src'],
   setupFiles: ['<rootDir>/jest.setup.js'],
+  globalSetup: '<rootDir>/src/testes/globalSetup.ts',
   collectCoverageFrom: ['src/**/*.ts', '!src/**/*.spec.ts', '!src/server.ts', '!src/database/migrar.ts'],
 };

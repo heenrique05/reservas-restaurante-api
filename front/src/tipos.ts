@@ -35,3 +35,47 @@ export type Horario = { horario: string; livre: boolean };
 export type Resultado =
   | { tipo: 'reserva'; reserva: Reserva; mensagem: string }
   | { tipo: 'espera'; entrada: EntradaEspera; mensagem: string };
+
+// ---------- Painel do restaurante ----------
+
+export type Papel = 'dono' | 'funcionario';
+export type Usuario = { id: number; nome: string; email: string; papel: Papel };
+
+export type StatusReserva = 'aguardando_sinal' | 'confirmada' | 'cancelada' | 'concluida' | 'nao_compareceu' | 'expirada';
+
+export type ReservaDoPainel = {
+  id: number;
+  mesaNumero: number;
+  nomeCliente: string;
+  telefone: string;
+  email?: string;
+  pessoas: number;
+  dataHora: string;
+  status: StatusReserva;
+  observacao?: string;
+  expiraEm?: string;
+};
+
+export type StatusEspera = 'aguardando' | 'atendida' | 'cancelada';
+export type EntradaDaFila = {
+  id: number;
+  nomeCliente: string;
+  telefone: string;
+  pessoas: number;
+  dataHora: string;
+  status: StatusEspera;
+  observacao?: string;
+  reservaId?: number;
+  criadoEm: string;
+};
+
+export type Relatorio = {
+  periodo: { de: string; ate: string };
+  reservas: Record<StatusReserva, number> & { total: number };
+  pessoasAtendidas: number;
+  taxaDeFaltas: number | null;
+  taxaDeExpiracao: number | null;
+  porDia: { dia: string; total: number; concluidas: number; canceladas: number; faltas: number; expiradas: number }[];
+  horariosMaisProcurados: { horario: string; reservas: number }[];
+  listaEspera: Record<StatusEspera, number> & { total: number };
+};

@@ -188,7 +188,7 @@ O service depende de uma interface de repositório, e não do Knex direto. Por i
 - [x] Documentação com Swagger
 - [ ] Sinal por Pix com webhook
 - [x] Site do cliente em React: escolher dia, ver horários, reservar ou entrar na fila
-- [ ] Painel do restaurante em React
+- [x] Painel do restaurante em React: login, reservas do dia, lista de espera e relatório
 - [ ] Publicação
 
 ## Autor

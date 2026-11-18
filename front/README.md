@@ -1,6 +1,6 @@
 # Site de reservas (front-end)
 
-A página onde o cliente reserva a mesa. Feita em **React + TypeScript + Vite** e conversa com a API da pasta de cima.
+A página onde o cliente reserva a mesa e o painel da equipe do restaurante. Feita em **React + TypeScript + Vite** e conversa com a API da pasta de cima.
 
 ## O que o cliente faz
 
@@ -10,6 +10,15 @@ A página onde o cliente reserva a mesa. Feita em **React + TypeScript + Vite** 
 4. Recebe a **confirmação** com um relógio de **5 minutos** pra pagar o sinal (ou a posição na fila).
 
 Se duas pessoas tentarem a última mesa ao mesmo tempo, a API recusa a segunda (409) e o site atualiza a grade sozinho.
+
+## Painel do restaurante (/painel)
+
+- **Entrar** com e-mail e senha da equipe (o token do login fica guardado no navegador)
+- **Reservas do dia**: quem vem, a que horas, em qual mesa, com os botões *Sinal pago*, *Chegou*, *Não veio* e *Cancelar*. Atualiza sozinha a cada 30 segundos
+- **Lista de espera** do dia, por horário e na ordem de chegada
+- **Relatório do mês** (só o dono): totais, taxa de faltas, horários mais procurados e o dia a dia
+
+Quando uma reserva é cancelada, a API passa a mesa para o primeiro da fila, e o painel avisa.
 
 ## Como rodar
 
@@ -31,7 +40,17 @@ src/
   api.ts            todas as chamadas à API num lugar só
   horarios.ts       regras de horário (as mesmas da API)
   tipos.ts          formatos dos dados
-  App.tsx           a página e o estado de cada etapa
+  auth.tsx          quem está logado (Context do React)
+  App.tsx           o mapa do site: cada endereço, uma tela (React Router)
+  paginas/
+    Reservar.tsx    a página do cliente e o estado de cada etapa
+  painel/
+    Entrar.tsx           login da equipe
+    LayoutPainel.tsx     topo com o menu
+    ReservasDoDia.tsx    reservas do dia e os botões de status
+    FilaDoDia.tsx        lista de espera
+    RelatorioDoMes.tsx   relatório do dono
+    useCarregar.ts       hook que busca dados e recarrega sozinho
   componentes/
     EscolhaDia.tsx         dia e pessoas
     GradeHorarios.tsx      os horários livres e lotados

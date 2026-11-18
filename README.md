@@ -22,7 +22,7 @@ API para um restaurante receber reservas online e diminuir as faltas. O cliente 
 - Validação com expressões regulares
 - Testes com Jest e Supertest
 - Documentação com Swagger (OpenAPI 3)
-- Front-end em React *(etapa futura)*
+- Front-end em React + Vite, na pasta [`front/`](front/README.md)
 
 ## Como rodar
 
@@ -55,6 +55,18 @@ Com a API ligada, a documentação de todas as rotas fica em **http://localhost:
 | `npm start` | Roda a versão gerada pelo build |
 
 Os testes de integração (API + banco de verdade) só rodam se a variável `DATABASE_URL_TESTE` apontar para um banco separado, só de testes, porque eles apagam os dados a cada teste.
+
+## Site do cliente (React)
+
+Em outro terminal, com a API ligada:
+
+```bash
+cd front
+npm install
+npm run dev
+```
+
+Abra http://localhost:5173. Detalhes em [`front/README.md`](front/README.md).
 
 ## Rotas
 
@@ -175,7 +187,9 @@ O service depende de uma interface de repositório, e não do Knex direto. Por i
 - [x] Relatório para o dono
 - [x] Documentação com Swagger
 - [ ] Sinal por Pix com webhook
-- [ ] Front-end em React e publicação
+- [x] Site do cliente em React: escolher dia, ver horários, reservar ou entrar na fila
+- [ ] Painel do restaurante em React
+- [ ] Publicação
 
 ## Autor
 

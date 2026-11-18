@@ -224,6 +224,33 @@ descrever('Mesas, reservas e lista de espera (integração)', () => {
     });
   });
 
+  describe('relatório', () => {
+    it('should group the period by status, day and time, only for the owner', async () => {
+      await criarMesa(1, 4);
+      await criarMesa(2, 4);
+      const ana = await reservar(pedido(2, '20:00', 'Ana'));
+      const bia = await reservar(pedido(4, '20:00', 'Bia'));
+      const caio = await reservar(pedido(3, '12:00', 'Caio'));
+      await mudarStatus(ana.body.dados.id, 'confirmada');
+      await mudarStatus(ana.body.dados.id, 'concluida');
+      await mudarStatus(bia.body.dados.id, 'confirmada');
+      await mudarStatus(bia.body.dados.id, 'nao_compareceu');
+      await mudarStatus(caio.body.dados.id, 'cancelada');
+
+      const comoFuncionario = await request(app).get(`/relatorios?de=${dia}&ate=${dia}`).set('Authorization', funcionario);
+      const resposta = await request(app).get(`/relatorios?de=${dia}&ate=${dia}`).set('Authorization', dono);
+
+      expect(comoFuncionario.status).toBe(403);
+      expect(resposta.status).toBe(200);
+      const relatorio = resposta.body.dados;
+      expect(relatorio.reservas).toEqual(expect.objectContaining({ total: 3, concluida: 1, nao_compareceu: 1, cancelada: 1 }));
+      expect(relatorio.pessoasAtendidas).toBe(2);
+      expect(relatorio.taxaDeFaltas).toBe(50);
+      expect(relatorio.porDia).toEqual([{ dia, total: 3, concluidas: 1, canceladas: 1, faltas: 1, expiradas: 0 }]);
+      expect(relatorio.horariosMaisProcurados[0]).toEqual({ horario: '20:00', reservas: 2 });
+    });
+  });
+
   describe('horários disponíveis', () => {
     it('should show the times that still have a table, counting the 15-minute margin', async () => {
       await criarMesa(1, 4);

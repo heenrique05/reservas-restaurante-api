@@ -21,6 +21,7 @@ API para um restaurante receber reservas online e diminuir as faltas. O cliente 
 - Login com JWT e senha guardada com bcrypt
 - Validação com expressões regulares
 - Testes com Jest e Supertest
+- Documentação com Swagger (OpenAPI 3)
 - Front-end em React *(etapa futura)*
 
 ## Como rodar
@@ -40,6 +41,8 @@ npm run db:migrate   # cria as tabelas
 npm run dev          # sobe a API em http://localhost:3001
 ```
 
+Com a API ligada, a documentação de todas as rotas fica em **http://localhost:3001/docs**. Dá para testar cada rota por lá, com o botão *Try it out*.
+
 | Comando | O que faz |
 | --- | --- |
 | `npm run dev` | Roda em modo desenvolvimento, reiniciando a cada alteração |
@@ -54,6 +57,8 @@ npm run dev          # sobe a API em http://localhost:3001
 Os testes de integração (API + banco de verdade) só rodam se a variável `DATABASE_URL_TESTE` apontar para um banco separado, só de testes, porque eles apagam os dados a cada teste.
 
 ## Rotas
+
+A lista completa, com exemplos e todas as respostas possíveis, está no Swagger em `/docs`.
 
 | Método | Rota | Login? | O que faz |
 | --- | --- | --- | --- |
@@ -72,6 +77,7 @@ Os testes de integração (API + banco de verdade) só rodam se a variável `DAT
 | GET | `/lista-espera?data=2026-11-20` | Sim | A fila do dia, em ordem de chegada |
 | PATCH | `/lista-espera/:id/cancelar` | Sim | Tira alguém da fila |
 | GET | `/disponibilidade?data=2026-11-20&pessoas=3` | Não | Os horários do dia que ainda têm mesa para o grupo |
+| GET | `/relatorios?de=2026-11-01&ate=2026-11-30` | Dono | Reservas por status e por dia, taxa de faltas, horários mais procurados e lista de espera |
 
 Nas rotas com login, mande o token no cabeçalho:
 
@@ -166,7 +172,8 @@ O service depende de uma interface de repositório, e não do Knex direto. Por i
 - [x] Mesas e reservas, sem conflito de horário
 - [x] Lista de espera, com a mesa passando sozinha para o primeiro da fila
 - [x] Prazo do sinal com expiração automática, horário de funcionamento e horários disponíveis
-- [ ] Painel e relatório
+- [x] Relatório para o dono
+- [x] Documentação com Swagger
 - [ ] Sinal por Pix com webhook
 - [ ] Front-end em React e publicação
 

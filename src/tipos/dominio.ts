@@ -91,3 +91,24 @@ export const textoDoStatus: Record<StatusReserva, string> = {
   nao_compareceu: 'Cliente não compareceu',
   expirada: 'Expirada (o sinal não foi pago a tempo)',
 };
+
+// Relatório do dono para um período.
+export type ResumoDoDia = {
+  dia: string; // 2026-11-20
+  total: number;
+  concluidas: number;
+  canceladas: number;
+  faltas: number;
+  expiradas: number;
+};
+
+export type Relatorio = {
+  periodo: { de: string; ate: string };
+  reservas: Record<StatusReserva, number> & { total: number };
+  pessoasAtendidas: number; // soma das pessoas das reservas concluídas
+  taxaDeFaltas: number | null; // % de quem tinha mesa garantida e não veio
+  taxaDeExpiracao: number | null; // % das reservas em que o sinal não foi pago a tempo
+  porDia: ResumoDoDia[];
+  horariosMaisProcurados: { horario: string; reservas: number }[];
+  listaEspera: Record<StatusEspera, number> & { total: number };
+};
